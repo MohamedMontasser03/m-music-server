@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import ytdl from "ytdl-core";
 import dotenv from "dotenv";
-import axios from "axios";
+import { getVideoSearchResults } from "./utils/youtube-utils";
 dotenv.config();
 
 const app = express();
@@ -13,23 +13,20 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`Listening on port ${port}`));
 
 app.get("/v0/", (req: Request, res: Response) => res.send("M Music API"));
+
 app.get("/v0/healthcheck", (req: Request, res: Response) =>
   res.sendStatus(200)
 );
 
 app.get("/v0/search", async (req: Request, res: Response) => {
-  const { q: query } = req.query as { q: string };
-  const apiKey = process.env.YT_API_KEY;
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&key=${apiKey}&maxResults=10`;
-  const response = await axios.get(url);
-  res.send({
-    videos: response.data.items.map((item: any) => ({
-      id: item.id.videoId,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      thumbnails: item.snippet.thumbnails,
-    })),
-  });
+  try {
+    const { q: query } = req.query as { q: string };
+
+    res.send(await getVideoSearchResults(query));
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("failed to fetch videos");
+  }
 });
 
 app.get("/v0/watch", async (req: Request, res: Response) => {
